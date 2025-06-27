@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Chat{% endblock title %}
+
+{% block content %}
+<div class="container mt-2" style="max-width:600px;">
+    <!-- Chat Header -->
+    <div class="d-flex align-items-center justify-content-between border-bottom py-2">
+        <div class="d-flex align-items-center">
+            <a href="{% url 'thread_list' %}" class="btn btn-link text-dark p-0 me-3"><i class="bi bi-arrow-left" style="font-size:1.25rem;"></i></a>
+            <h5 class="mb-0 text-primary">
+                {% if thread.user1 == request.user %}{{ thread.user2.username }}
+                {% else %}{{ thread.user1.username }}
+                {% endif %}
+            </h5>
+        </div>
+        <a href="{% url 'logout' %}" title="Logout" class="btn btn-link text-danger"><i class="bi bi-box-arrow-right" style="font-size:1.25rem;"></i></a>
+    </div>
+
+
+    <!-- Messages Area -->
+    <div id="chat-messages" style="height:calc(100vh - 130px); overflow-y:auto; overflow-x:hidden;">
+        {% for message in messages %}
+            <div class="mb-2 d-flex {% if message.sender == request.user %} justify-content-end {% else %} justify-content-start {% endif %}" data-message-id="{{ message.id }}">
+                <div style="
+                    display:inline-block;
+                    max-width:55%; 
+                    font-size:0.9rem;
+                    border-radius:8px;
+                    padding:5px 10px;
+                    {% if message.sender == request.user %}
+                        background-color:#007bff;
+                        color:white;
+                    {% else %}
+                        background-color:#f1f1f1;
+                        color:#333;
+                    {% endif %};
+                ">
+                    {% if message.reply_to %}
+                        <div style="
+                            font-size:0.75rem;
+                            padding:3px 5px;
+                            margin-bottom:3px;
+                            border-left:3px solid #17a2ff;
+                            background-color:rgba(255,255,255,0.2);
+                            border-radius:3px;">
+                            ↩️ {{ message.reply_to.text|truncatechars:30|default:'[File/Image]' }}
+                        </div>
+                    {% endif %}
+
+                    {% if message.text %}<div>{{ message.text }}</div>{% endif %}
+                    {% if message.image %}<img src="{{ message.image.url }}" alt="Image" class="img-fluid rounded mt-1" style="max-width:150px;" />{% endif %}
+                    {% if message.file %}<a href="{{ message.file.url }}" target="_blank" class="d-block mt-1 text-decoration-none">📄 Download</a>{% endif %}
+
+                    <small style="font-size:0.65rem; text-align:right; display:block;">
+                        {{ message.timestamp|date:"H:i" }}
+                    </small>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Message Form -->
+    <form method="POST" enctype="multipart/form-data" id="chat-form" style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:600px; padding:8px;" class="bg-white">
+    {% csrf_token %}
+    <input type="hidden" name="reply_to" id="reply-to">
+
+    <!-- File Preview Area -->
+    <div id="file-preview" class="mb-2" style="display:none;">
+        <img id="image-preview" style="max-width:100px; display:none;" />
+        <div id="file-name" style="font-size:0.9rem;" class="mt-1"></div>
+    </div>
+
+    <div class="d-flex align-items-center">
+        <input class="form-control rounded-pill flex-grow-1" id="message-input" name="text" placeholder="Type a message…" />
+        <label class="btn btn-link text-primary ms-2" title="Send a file">
+            <i class="bi bi-paperclip"></i><input id="file-input" type="file" name="file" style="display:none;" />
+        </label>
+        <button class="btn btn-primary rounded-pill ms-2" type="submit">Send</button>
+    </div>
+</form>
+
+
+
+<!-- WebSocket JS for Real-time Chat -->
+<script>
+    const threadId = "{{ thread.id }}"; 
+    const chatSocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/chat/' + threadId + '/'
+    );
+
+    chatSocket.onmessage = function (e) {
+        const data = JSON.parse(e.data);
+        addMessage(data);
+    };
+
+    chatSocket.onerror = function (e) {
+        console.error('WebSocket error:', e);
+    };
+
+    chatSocket.onclose = function (e) {
+        console.warn('Chat socket closed unexpectedly!');
+    };
+    
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const textInput = document.getElementById('message-input');
+        const replyToInput = document.getElementById('reply-to');
+        chatSocket.send(JSON.stringify({
+            'text': textInput.value,
+            'reply_to': replyToInput.value || null,
+        }));
+
+        // Reset inputs
+        textInput.value = '';
+        replyToInput.value = '';
+    });
+    function addMessage(data) {
+        const chatMessages = document.getElementById('chat-messages');
+        const isOwnMessage = data.user === '{{ request.user.username }}';
+        const reply = data.reply_to ? `<div style="font-size:0.75rem; padding:3px 5px; margin-bottom:3px; border-left:3px solid #17a2ff; background-color:rgba(255,255,255,0.2); border-radius:3px;">
+            ↩️ ${data.reply_to}
+        </div>` : '';
+        const newMessage = `
+            <div class="mb-2 d-flex ${isOwnMessage ? 'justify-content-end' : 'justify-content-start'}">
+                <div style="
+                    display:inline-block;
+                    max-width:55%; 
+                    font-size:0.9rem;
+                    border-radius:8px;
+                    padding:5px 10px;
+                    ${isOwnMessage ? 'background-color:#007bff;color:white;' : 'background-color:#f1f1f1;color:#333;'}">
+                    ${reply}
+                    <div class="d-flex justify-content-between align-items-end">
+                        <div style="white-space:pre-wrap; word-wrap:break-word;">
+                            ${data.text}
+                        </div>
+                        <small style="font-size:0.65rem; margin-left:8px;">
+                            ${data.timestamp}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+        chatMessages.innerHTML += newMessage;
+
+        // Scroll to the latest
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+
+
+    const replyToInput = document.getElementById('reply-to');
+
+    // Click listener for messages
+    document.querySelectorAll('#chat-messages > .mb-2').forEach((element) => {
+        element.addEventListener('click', (e) => {
+            const messageId = element.getAttribute('data-message-id');
+            replyToInput.value = messageId;
+
+            // Highlight selected message briefly
+            element.querySelector('div').style.outline = "2px solid #17a2ff";
+            setTimeout(() => {
+                element.querySelector('div').style.outline = "none";
+            }, 500);
+        });
+    });
+</script>
+
+
+<!-- Hide Scrollbars -->
+<style>
+#chat-messages {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+#chat-messages::-webkit-scrollbar {
+    display: none;
+}
+</style>
+
+{% endblock content %}
+
+

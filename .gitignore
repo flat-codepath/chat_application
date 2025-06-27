@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Django
+*.log
+*.pot
+*.pyc
+*.db
+*.sqlite3
+media/
+staticfiles/
+.env
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# Mac/Linux
+.DS_Store
+Thumbs.db
+
+# Virtualenv
+venv/
+ENV/
+env/
+.venv/
+
+# Channels-related (if any)
+*.pid
+
+# Node/npm if used (e.g., for Webpack or frontend)
+node_modules/
+npm-debug.log
+
+# Coverage / test reports
+htmlcov/
+.coverage
+.tox/
+.cache/
+.pytest_cache/
+
+# Local migrations (if needed to exclude)
+**/migrations/*.py
+!**/migrations/__init__.py
+
+.media
+media
+migrations

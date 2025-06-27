@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Test WebSocket</h2>
+<input id="messageInput" placeholder="Enter a message">
+<button id="sendBtn">Send</button>
+<ul id="messages"></ul>
+
+<script>
+const threadId = 1;  // example
+const socket = new WebSocket(`ws://${window.location.host}/ws/chat/${threadId}/`);
+
+socket.onopen = function (e) {
+    console.log("✅ WebSocket connected");
+};
+
+socket.onerror = function (e) {
+    console.error("❌ WebSocket error:", e);
+};
+
+socket.onmessage = function (e) {
+    const data = JSON.parse(e.data);
+    const messagesList = document.getElementById('messages');
+    const li = document.createElement('li');
+    li.textContent = data.message;
+    messagesList.appendChild(li);
+};
+
+const sendBtn = document.getElementById('sendBtn');
+sendBtn.onclick = function() {
+    if (socket.readyState === WebSocket.OPEN) {
+        const input = document.getElementById('messageInput');
+        socket.send(JSON.stringify({ 'message': input.value }));
+
+        input.value = '';
+    } else {
+        alert('❌ WebSocket not connected yet!');
+    }
+};
+</script>
+</body>
+</html>

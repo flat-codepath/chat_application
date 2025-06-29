@@ -3,7 +3,6 @@
 
 {% block content %}
 <div class="container mt-2" style="max-width:600px;">
-    <!-- Chat Header -->
     <div class="d-flex align-items-center justify-content-between border-bottom py-2">
         <div class="d-flex align-items-center">
             <a href="{% url 'thread_list' %}" class="btn btn-link text-dark p-0 me-3"><i class="bi bi-arrow-left" style="font-size:1.25rem;"></i></a>
@@ -16,169 +15,226 @@
         <a href="{% url 'logout' %}" title="Logout" class="btn btn-link text-danger"><i class="bi bi-box-arrow-right" style="font-size:1.25rem;"></i></a>
     </div>
 
-
-    <!-- Messages Area -->
-    <div id="chat-messages" style="height:calc(100vh - 130px); overflow-y:auto; overflow-x:hidden;">
+    <div id="chat-messages" style="height:calc(100vh - 175px); overflow-y:auto; overflow-x:hidden;">
         {% for message in messages %}
             <div class="mb-2 d-flex {% if message.sender == request.user %} justify-content-end {% else %} justify-content-start {% endif %}" data-message-id="{{ message.id }}">
-                <div style="
-                    display:inline-block;
-                    max-width:55%; 
-                    font-size:0.9rem;
-                    border-radius:8px;
-                    padding:5px 10px;
+                <div class="p-2 px-3 rounded message-bubble"
+                style="display:inline-block; max-width:70%; font-size:0.9rem; 
                     {% if message.sender == request.user %}
-                        background-color:#007bff;
-                        color:white;
+                        background-color:#0d6efd; color:white;
                     {% else %}
-                        background-color:#f1f1f1;
-                        color:#333;
-                    {% endif %};
-                ">
-                    {% if message.reply_to %}
-                        <div style="
-                            font-size:0.75rem;
-                            padding:3px 5px;
-                            margin-bottom:3px;
-                            border-left:3px solid #17a2ff;
-                            background-color:rgba(255,255,255,0.2);
-                            border-radius:3px;">
-                            ↩️ {{ message.reply_to.text|truncatechars:30|default:'[File/Image]' }}
+                        background-color:#f1f1f1; color:#333;
+                    {% endif %}">
+
+                     {% if message.reply_to %}
+                    <a href="#message-{{ message.reply_to.id }}" class="text-decoration-none d-block" style="color: inherit;">
+                        <div style="font-size:0.8rem; padding:5px 8px; margin-bottom:5px; border-left:3px solid #17a2ff; background-color:rgba(255,255,255,0.2); border-radius:3px;">
+                            <strong style="font-size:0.8rem;">{% if message.reply_to.sender == request.user %}You{% else %}{{ message.reply_to.sender.username }}{% endif %}</strong>
+                            <div class="text-truncate" style="opacity:0.9;">{{ message.reply_to.text|truncatechars:40|default:'[Attachment]' }}</div>
                         </div>
+                    </a>
                     {% endif %}
 
-                    {% if message.text %}<div>{{ message.text }}</div>{% endif %}
-                    {% if message.image %}<img src="{{ message.image.url }}" alt="Image" class="img-fluid rounded mt-1" style="max-width:150px;" />{% endif %}
-                    {% if message.file %}<a href="{{ message.file.url }}" target="_blank" class="d-block mt-1 text-decoration-none">📄 Download</a>{% endif %}
+                    
+                    {% if message.text %}<div>{{ message.text }}</div>{% endif %} 
 
-                    <small style="font-size:0.65rem; text-align:right; display:block;">
+                    
+                    
+                    {% if message.image %}
+                        <img src="{{ message.image.url }}" alt="Image" class="img-fluid rounded mt-2" style="max-height: 200px;" />
+                    {% endif %}
+                    
+                    {% if message.file %}
+                        <a href="{{ message.file.url }}" target="_blank" class="d-block mt-2 text-decoration-none p-1 rounded text-white" style="background-color:rgba(0,0,0,0.1);">
+                            <i class="bi bi-file-earmark-arrow-down"></i> {{ message.file.name|truncatechars:25 }}
+                        </a> 
+                    {% endif %}
+                    
+                    
+                    <small class="d-block text-end mt-1" style="font-size:0.65rem; {% if message.sender == request.user %}color:rgba(255,255,255,0.7);{% endif %}">
                         {{ message.timestamp|date:"H:i" }}
-                    </small>
+                    </small>  
                 </div>
             </div>
         {% endfor %}
     </div>
 
-    <!-- Message Form -->
-    <form method="POST" enctype="multipart/form-data" id="chat-form" style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:600px; padding:8px;" class="bg-white">
-    {% csrf_token %}
-    <input type="hidden" name="reply_to" id="reply-to">
+     {% comment %} replay and reactions  {% endcomment %}
 
-    <!-- File Preview Area -->
-    <div id="file-preview" class="mb-2" style="display:none;">
-        <img id="image-preview" style="max-width:100px; display:none;" />
-        <div id="file-name" style="font-size:0.9rem;" class="mt-1"></div>
+    
+
+    <div class="p-2 bg-white border-top">
+        <form method="POST" id="chat-form">
+            {% csrf_token %}
+            <input type="hidden" name="reply_to" id="reply-to">
+
+            <div id="file-preview-container" class="mb-2 p-2 border rounded" style="display:none;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <img id="image-preview-thumb" class="rounded" style="max-height: 50px; display:none;" />
+                        <span id="file-preview-name" class="small"></span>
+                    </div>
+                    <button type="button" class="btn-close" id="cancel-file-btn" aria-label="Close"></button>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center">
+                <input class="form-control rounded-pill flex-grow-1" id="message-input" name="text" placeholder="Type a message…" />
+                <label class="btn btn-link text-primary ms-2 fs-4" title="Send a file">
+                    <i class="bi bi-paperclip"></i>
+                    <input id="file-input" type="file" name="file" class="d-none" />
+                </label>
+                <button class="btn btn-primary rounded-pill ms-2" type="submit">Send</button>
+            </div>
+        </form>
+    </div>
+</div>
+    <div id="context-menu" class="dropdown-menu shadow" style="display: none; position: fixed;">
+        <a class="dropdown-item reply-btn d-flex align-items-center" href="#"><i class="bi bi-reply-fill me-2"></i>Reply</a>
+        <div class="dropdown-divider"></div>
+        <div class="px-2 d-flex justify-content-around">
+            <span class="react-emoji-btn">👍</span><span class="react-emoji-btn">❤️</span><span class="react-emoji-btn">😂</span><span class="react-emoji-btn">😮</span><span class="react-emoji-btn">😢</span>
+        </div>
     </div>
 
-    <div class="d-flex align-items-center">
-        <input class="form-control rounded-pill flex-grow-1" id="message-input" name="text" placeholder="Type a message…" />
-        <label class="btn btn-link text-primary ms-2" title="Send a file">
-            <i class="bi bi-paperclip"></i><input id="file-input" type="file" name="file" style="display:none;" />
-        </label>
-        <button class="btn btn-primary rounded-pill ms-2" type="submit">Send</button>
-    </div>
-</form>
 
 
 
-<!-- WebSocket JS for Real-time Chat -->
+
+
 <script>
     const threadId = "{{ thread.id }}"; 
     const chatSocket = new WebSocket(
         'ws://' + window.location.host + '/ws/chat/' + threadId + '/'
     );
 
+    // --- DOM Elements ---
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+    const fileInput = document.getElementById('file-input');
+    const filePreviewContainer = document.getElementById('file-preview-container');
+    const imagePreviewThumb = document.getElementById('image-preview-thumb');
+    const filePreviewName = document.getElementById('file-preview-name');
+    const cancelFileBtn = document.getElementById('cancel-file-btn');
+
+    const replyToInput = document.getElementById('reply-to-input');
+    const replyBanner = document.getElementById('reply-banner');
+    
+    // --- State Variable ---
+    let currentMessageIdForMenu = null;
+    let fileToSend = null;
+
+
+    // --- WebSocket Handlers ---
     chatSocket.onmessage = function (e) {
         const data = JSON.parse(e.data);
         addMessage(data);
     };
 
-    chatSocket.onerror = function (e) {
-        console.error('WebSocket error:', e);
-    };
+    chatSocket.onerror = (e) => console.error('WebSocket error:', e);
 
-    chatSocket.onclose = function (e) {
-        console.warn('Chat socket closed unexpectedly!');
-    };
-    
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const textInput = document.getElementById('message-input');
-        const replyToInput = document.getElementById('reply-to');
-        chatSocket.send(JSON.stringify({
-            'text': textInput.value,
-            'reply_to': replyToInput.value || null,
-        }));
+    // --- Event Listeners ---
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-        // Reset inputs
-        textInput.value = '';
-        replyToInput.value = '';
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            fileToSend = {
+                name: file.name,
+                type: file.type,
+                content: event.target.result // Base64 encoded string
+            };
+
+            // Show preview
+            if (file.type.startsWith('image/')) {
+                imagePreviewThumb.src = event.target.result;
+                imagePreviewThumb.style.display = 'inline';
+                filePreviewName.textContent = '';
+            } else {
+                imagePreviewThumb.style.display = 'none';
+                filePreviewName.textContent = file.name;
+            }
+            filePreviewContainer.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
     });
+
+    cancelFileBtn.addEventListener('click', function() {
+        fileToSend = null;
+        fileInput.value = ''; // Reset file input
+        filePreviewContainer.style.display = 'none';
+    });
+    
+    chatForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const text = messageInput.value;
+
+        if (!text && !fileToSend) {
+            return; // Don't send empty messages
+        }
+
+        const payload = {
+            'text': text,
+            'reply_to': null // Add your reply logic here if needed
+        };
+        
+        if (fileToSend) {
+            payload.file = fileToSend;
+        }
+
+        chatSocket.send(JSON.stringify(payload));
+
+        // Reset form state
+        chatForm.reset();
+        fileToSend = null;
+        filePreviewContainer.style.display = 'none';
+    });
+    
     function addMessage(data) {
-        const chatMessages = document.getElementById('chat-messages');
         const isOwnMessage = data.user === '{{ request.user.username }}';
-        const reply = data.reply_to ? `<div style="font-size:0.75rem; padding:3px 5px; margin-bottom:3px; border-left:3px solid #17a2ff; background-color:rgba(255,255,255,0.2); border-radius:3px;">
-            ↩️ ${data.reply_to}
-        </div>` : '';
+        
+        const justifyClass = isOwnMessage ? 'justify-content-end' : 'justify-content-start';
+        const bubbleStyle = isOwnMessage 
+            ? 'background-color:#0d6efd; color:white;' 
+            : 'background-color:#f1f1f1; color:#333;';
+        const timestampColor = isOwnMessage ? 'color:rgba(255,255,255,0.7);' : '';
+
+        let fileHTML = '';
+        if (data.image_url) {
+            fileHTML = `<img src="${data.image_url}" alt="Image" class="img-fluid rounded mt-2" style="max-height: 200px;" />`;
+        } else if (data.file_url) {
+            fileHTML = `<a href="${data.file_url}" target="_blank" class="d-block mt-2 text-decoration-none p-2 rounded" style="background-color:rgba(0,0,0,0.1);">
+                            <i class="bi bi-file-earmark-arrow-down"></i> ${data.file_name}
+                        </a>`;
+        }
+
         const newMessage = `
-            <div class="mb-2 d-flex ${isOwnMessage ? 'justify-content-end' : 'justify-content-start'}">
-                <div style="
-                    display:inline-block;
-                    max-width:55%; 
-                    font-size:0.9rem;
-                    border-radius:8px;
-                    padding:5px 10px;
-                    ${isOwnMessage ? 'background-color:#007bff;color:white;' : 'background-color:#f1f1f1;color:#333;'}">
-                    ${reply}
-                    <div class="d-flex justify-content-between align-items-end">
-                        <div style="white-space:pre-wrap; word-wrap:break-word;">
-                            ${data.text}
-                        </div>
-                        <small style="font-size:0.65rem; margin-left:8px;">
-                            ${data.timestamp}
-                        </small>
-                    </div>
+            <div class="mb-2 d-flex ${justifyClass}">
+                <div class="p-2 px-3 rounded" style="display:inline-block; max-width:70%; font-size:0.9rem; ${bubbleStyle}">
+                    ${data.text ? `<div>${data.text}</div>` : ''}
+                    ${fileHTML}
+                    <small class="d-block text-end mt-1" style="font-size:0.65rem; ${timestampColor}">
+                        ${data.timestamp}
+                    </small>
                 </div>
             </div>
         `;
         chatMessages.innerHTML += newMessage;
-
-        // Scroll to the latest
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-
-
-    const replyToInput = document.getElementById('reply-to');
-
-    // Click listener for messages
-    document.querySelectorAll('#chat-messages > .mb-2').forEach((element) => {
-        element.addEventListener('click', (e) => {
-            const messageId = element.getAttribute('data-message-id');
-            replyToInput.value = messageId;
-
-            // Highlight selected message briefly
-            element.querySelector('div').style.outline = "2px solid #17a2ff";
-            setTimeout(() => {
-                element.querySelector('div').style.outline = "none";
-            }, 500);
-        });
-    });
+    // Initial scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 </script>
 
-
-<!-- Hide Scrollbars -->
 <style>
-#chat-messages {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-#chat-messages::-webkit-scrollbar {
-    display: none;
-}
+    #chat-messages {
+        scrollbar-width: none; -ms-overflow-style: none;
+    }
+    #chat-messages::-webkit-scrollbar {
+        display: none;
+    }
 </style>
-
 {% endblock content %}
-
-

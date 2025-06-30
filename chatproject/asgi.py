@@ -21,8 +21,6 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 #     "websocket": URLRouter(websocket_urlpatterns),  # ✅ Must be here
 # })
 
-
-
 import os
 import django
 from django.core.asgi import get_asgi_application

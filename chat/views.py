@@ -67,9 +67,11 @@ def chat_view(request, thread_id):
         text = request.POST.get('text')
         reply_to_id = request.POST.get('reply_to')
         reply_to = Message.objects.filter(id=reply_to_id).first() if reply_to_id else None
+        image = request.FILES.get("file") if request.FILES.get("file") and request.FILES.get("file").content_type.startswith('image') else None
+        file = request.FILES.get("file") if request.FILES.get("file") and not request.FILES.get("file").content_type.startswith('image') else None
 
-        image = request.FILES.get('image')
-        file = request.FILES.get('file')
+        # image = request.FILES.get('image')
+        # file = request.FILES.get('file')
 
         Message.objects.create(
             thread=thread,

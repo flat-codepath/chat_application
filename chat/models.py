@@ -36,3 +36,29 @@ class Message(models.Model):
             return f"{self.sender.username}: [File]"
         else:
             return f"{self.sender.username}: [Empty Message]"
+
+
+
+class GroupThread(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    participants = models.ManyToManyField(User, related_name='group_threads')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class GroupMessage(models.Model):
+    group_thread = models.ForeignKey(GroupThread, related_name='messages', on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    text = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='group_images/', blank=True, null=True)
+    file = models.FileField(upload_to='group_files/', blank=True, null=True)
+    reply_to = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)  # Reply
+    reactions = models.JSONField(default=dict, blank=True)  # ✅ New field
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.sender.username}: {self.text or '[Media]'}"
+
+

@@ -11,5 +11,8 @@ urlpatterns = [
     # We'll add chat URLs later
     path('threads/', views.thread_list, name='thread_list'),
     path('chat/<int:thread_id>/', views.chat_view, name='chat_home'),
-    path('new-chat',views.start_new_chat,name='start_new_chat')
+    path('new-chat',views.start_new_chat,name='start_new_chat'),
+    path('global/', views.global_chat_view, name='global_chat'),
+
+     path('api/global/users/',views.global_users_list, name='global_users_list'),
 ]

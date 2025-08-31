@@ -3,13 +3,14 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import User
 from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
-from .models import Thread, Message
+from .models import Thread, Message,GroupThread,GroupMessage
 import base64
 from django.core.files.base import ContentFile
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.thread_id = self.scope["url_route"]["kwargs"]["thread_id"]
+        print(self.scope)
         self.room_group_name = f"chat_{self.thread_id}"
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
@@ -133,3 +134,132 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message.reactions = reactions
         message.save()
         return reactions
+    
+
+
+
+# # Global Chat Consumer
+class GlobalChatConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.room_group_name = "global_chat"
+        self.group_thread = await self.get_global_thread()
+        print(self.group_thread,'-------------')
+
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        action = data.get('type')
+
+        if action == 'chat_message':
+            await self.handle_chat_message(data)
+        elif action == 'react':
+            await self.handle_reaction(data)
+
+    # Handle sending chat message
+    async def handle_chat_message(self, data):
+        text = data.get("text", "")
+        file_data = data.get('file', None)
+        reply_to_id = data.get("reply_to")
+
+        reply_to_message = await self.get_message(reply_to_id) if reply_to_id else None
+
+
+        sender = self.scope["user"]
+        message = GroupMessage(group_thread=self.group_thread, sender=sender, text=text,reply_to=reply_to_message)
+
+        # Handle base64 file/image upload
+        if file_data:
+            file_name = file_data['name']
+            _format, _content = file_data['content'].split(';base64,')
+            decoded_file = base64.b64decode(_content)
+
+            if file_data['type'].startswith('image/'):
+                message.image.save(file_name, ContentFile(decoded_file), save=False)
+            else:
+                message.file.save(file_name, ContentFile(decoded_file), save=False)
+
+        await self.save_message(message)
+
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'broadcast_group_message',
+                'message': {
+                    'id': message.id,
+                    'sender': sender.username,
+                    'text': message.text,
+                    'image': message.image.url if message.image else None,
+                    'reply_to': message.reply_to.text if message.reply_to else None,
+                    'file': message.file.url if message.file else None,
+                    'file_name': file_data['name'] if file_data else None,
+                    'timestamp': message.timestamp.strftime('%H:%M'),
+                    'reactions': {}
+                }
+            }
+        )
+
+    async def broadcast_group_message(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'chat_message',
+            'message': event['message']
+        }))
+
+    # Handle emoji reaction
+    async def handle_reaction(self, data):
+        message_id = data.get("message_id")
+        emoji = data.get("emoji")
+        sender = self.scope["user"]
+
+        updated_reactions = await self.update_reactions(message_id, emoji, sender.username)
+        
+
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'broadcast_group_reaction',
+                'message_id': message_id,
+                'emoji': emoji,
+                'reactions': updated_reactions
+            }
+        )
+
+    async def broadcast_group_reaction(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'reaction_update',
+            'message_id': event['message_id'],
+            'emoji': event['emoji'],
+            'reactions': event['reactions']
+        }))
+
+    @database_sync_to_async
+    def get_global_thread(self):
+        return GroupThread.objects.get_or_create(name="Global")[0]
+
+    @database_sync_to_async
+    def save_message(self, message):
+        print("---")
+        message.save()
+
+    @database_sync_to_async
+    def update_reactions(self, message_id, emoji, username):
+        message = GroupMessage.objects.get(id=message_id)
+        reactions = message.reactions or {}
+
+        users = set(reactions.get(emoji, []))
+        if username in users:
+            users.remove(username)
+        else:
+            users.add(username)
+
+        reactions[emoji] = list(users)
+        message.reactions = reactions
+        message.save()
+        return reactions
+    @database_sync_to_async
+    def get_message(self, message_id):
+        return GroupMessage.objects.get(id=message_id)

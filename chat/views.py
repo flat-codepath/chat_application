@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate, login, logout
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from .models import Thread, Message
+from .models import Thread, Message,GroupThread,GroupMessage
 from django.http import Http404
 
 def register(request):
@@ -104,3 +104,20 @@ def start_new_chat(request):
     # GET request -> show the user list
     users = User.objects.exclude(id=request.user.id)
     return render(request, 'chat/start_new_chat.html', {'users': users})
+
+
+@login_required
+def global_chat_view(request):
+    # Get or create the global group thread
+    group, created = GroupThread.objects.get_or_create(name="Global")
+    messages=GroupMessage.objects.all()
+    return render(request, 'chat/global_chat.html', {'group': group,'messages':messages})
+
+
+from django.http import JsonResponse
+@login_required
+def global_users_list(request):
+    users = User.objects.exclude(id=request.user.id)
+    user_list = [{"id": u.id, "username": u.username} for u in users]
+    return JsonResponse(user_list, safe=False)
+

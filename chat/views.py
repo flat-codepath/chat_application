@@ -9,7 +9,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login, logout
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Q, OuterRef, Subquery
 from .models import Thread, Message,GroupThread,GroupMessage
 from django.http import Http404
 
@@ -57,6 +57,34 @@ def thread_list(request):
         Q(user1=request.user) | Q(user2=request.user)
     )
     return render(request, 'chat/thread_list.html', {'threads': threads})
+
+
+
+
+@login_required
+def thread_list(request):
+    # Get all threads for the current user
+    threads = Thread.objects.filter(Q(user1=request.user) | Q(user2=request.user))
+    
+    # Efficiently get the last message for each thread
+    last_message_subquery = Message.objects.filter(
+        thread=OuterRef('pk')
+    ).order_by('-timestamp').values('text')[:1]
+
+    last_timestamp_subquery = Message.objects.filter(
+        thread=OuterRef('pk')
+    ).order_by('-timestamp').values('timestamp')[:1]
+
+    # Annotate the threads queryset with the last message and its timestamp
+    threads = threads.annotate(
+        last_message_text=Subquery(last_message_subquery),
+        last_message_time=Subquery(last_timestamp_subquery)
+    ).order_by('-last_message_time') # Order by most recent chat
+
+    context = {
+        'threads': threads
+    }
+    return render(request, 'chat/thread_list.html', context)
 
 
 @login_required

@@ -2,57 +2,91 @@
 {% block title %}Your Chats{% endblock title %}
 
 {% block content %}
-<div class="container mt-3" style="max-width:600px;">
-    <div class="d-flex justify-content-between align-items-center">
-        <h4 class="text-primary"><i class="bi bi-chat-dots-fill"></i> Chats</h4>
-        <a href="{% url 'start_new_chat' %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-plus-circle"></i> New Chat</a>
-        <a href="{% url 'global_chat' %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-plus-circle"></i> Group chat</a>
+<div class="container mt-4" style="max-width: 700px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 mb-0">My Chats</h2>
+        <div>
+            <a href="{% url 'global_chat' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-people-fill"></i> Group Chat
+            </a>
+            <a href="{% url 'start_new_chat' %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> New Chat
+            </a>
+        </div>
     </div>
-    <hr>
 
     <div class="list-group">
         {% for thread in threads %}
-            <a href="{% url 'chat_home' thread.id %}"
-               class="list-group-item rounded-3 shadow-sm my-2 text-decoration-none text-dark p-3"
-               style="cursor: pointer;">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-person-circle me-3 text-primary" style="font-size:1.5rem;"></i>
-                    <div>
-                        <div class="fw-bold small">
-                            {% if thread.user1 == request.user %}{{ thread.user2.username }}
-                            {% else %}{{ thread.user1.username }}
+            <a href="{% url 'chat_home' thread.id %}" class="list-group-item list-group-item-action rounded-3 shadow-sm mb-2 p-3">
+                <div class="d-flex w-100 align-items-center">
+                    <div class="avatar-placeholder me-3">
+                        <span>
+                            {% if thread.user1 == request.user %}
+                                {{ thread.user2.username|first|upper }}
+                            {% else %}
+                                {{ thread.user1.username|first|upper }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">
+                            {% if thread.user1 == request.user %}
+                                {{ thread.user2.username }}
+                            {% else %}
+                                {{ thread.user1.username }}
                             {% endif %}
                         </div>
-                        <!-- Optional: Last Message Preview can go here -->
-                        <!-- <div class="text-muted" style="font-size:0.8rem;">
-                            Last message goes here...
-                        </div> -->
+                        <p class="last-message text-muted mb-0 text-truncate">
+                            {{ thread.last_message_text|default:"Click to open chat..." }}
+                        </p>
                     </div>
+
+                    <div class="text-end ms-2 text-nowrap">
+                        <small class="text-muted d-block">
+                           {{ thread.last_message_time|date:"h:i A" }}
+                        </small>
+                        </div>
                 </div>
             </a>
-        {% endfor %}
-
-        {% if not threads %}
-            <div class="card text-center border-0 rounded-3 mt-4">
+        {% empty %}
+            <div class="card text-center border-0 mt-4 bg-transparent py-4">
                 <div class="card-body">
-                    <h5 class="card-title text-muted">No Chats Yet</h5>
-                    <p class="card-text text-secondary">Looks like you haven't started any chats yet.<br>Click “New Chat” above to get started!</p>
+                    <i class="bi bi-chat-text-fill fs-1 text-muted"></i>
+                    <h5 class="card-title text-muted mt-3">No Chats Yet</h5>
+                    <p class="card-text text-secondary">Click “New Chat” above to get started!</p>
                 </div>
             </div>
-        {% endif %}
+        {% endfor %}
     </div>
 </div>
 
-<!-- Hover Effect Styles -->
 <style>
+.avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    background-color: #0d6efd; /* Primary color */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    flex-shrink: 0; /* Prevents the avatar from shrinking */
+}
+.last-message {
+    font-size: 0.9rem;
+    max-width: 250px; /* Adjust as needed on smaller screens */
+}
 .list-group-item {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    border: 1px solid #dee2e6;
 }
 .list-group-item:hover {
-    background-color: #f9f9f9;
-    transform: translateY(-3px) scale(1.01);
-    box-shadow: 0px 3px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    border-color: #0d6efd;
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.08);
 }
 </style>
 {% endblock content %}
-

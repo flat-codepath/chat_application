@@ -1,52 +1,83 @@
-
 {% extends 'base.html' %}
 
 {% block title %}Login | ChatApp{% endblock title %}
 
 {% block content %}
-<div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
-        <h3 class="text-center text-primary">WellCome back!</h3>
-        <form method="POST" class="mt-3">
+<div class="d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="card shadow-lg p-4" style="width: 100%; max-width: 420px; border: none; border-radius: 15px;">
+        
+        <div class="text-center mb-4">
+            <i class="bi bi-chat-quote-fill text-primary" style="font-size: 3rem;"></i>
+            <h2 class="mt-2 fw-bold">Secerate ChatApp</h2>
+            <p class="text-muted">Welcome back! Please login to your account.</p>
+        </div>
+
+        {% if messages %}
+           {% for message in messages %}
+            <div class="alert alert-danger" role="alert">
+                {{ message }}
+            </div>
+           {% endfor %}
+        {% endif %}
+
+        <form method="POST">
             {% csrf_token %}
 
-            <div class="mb-3">
-                <label for="id_username" class="form-label">Username</label>
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">
+                    {{ form.non_field_errors.0 }}
+                </div>
+            {% endif %}
+
+            <div class="form-floating mb-3">
                 <input 
                     type="text"
                     name="username"
-                    id="id_username"
                     class="form-control {% if form.username.errors %}is-invalid{% endif %}"
+                    id="id_username"
+                    placeholder="Username"
                     required>
+                <label for="id_username">Username</label>
                 {% if form.username.errors %}
                     <div class="invalid-feedback">
                         {{ form.username.errors.0 }}
                     </div>
                 {% endif %}
             </div>
-
-            <div class="mb-3">
-                <label for="id_password" class="form-label">Password</label>
+            
+            <div class="form-floating mb-3">
                 <input 
                     type="password"
                     name="password"
-                    id="id_password"
                     class="form-control {% if form.password.errors %}is-invalid{% endif %}"
+                    id="id_password"
+                    placeholder="Password"
                     required>
-                {% if form.password.errors %}
+                <label for="id_password">Password</label>
+                 {% if form.password.errors %}
                     <div class="invalid-feedback">
                         {{ form.password.errors.0 }}
                     </div>
                 {% endif %}
             </div>
 
-            <div class="d-grid">
-                <button class="btn btn-primary" type="submit">Login</button>
+            <div class="d-grid mt-4">
+                <button class="btn btn-primary btn-lg" type="submit">Login</button>
             </div>
+
+            <div class="text-center my-3">
+                <span class="text-muted small">OR</span>
+            </div>
+
+            <div class="d-grid gap-2">
+                <a href="#" class="btn btn-danger"><i class="bi bi-google me-2"></i>Sign in with Google</a>
+                <a href="#" class="btn btn-primary"><i class="bi bi-facebook me-2"></i>Sign in with Facebook</a>
+            </div>
+
         </form>
-        <div class="text-center mt-3">
-            Don't have an account? 
-            <a href="{% url 'signup' %}" class="text-primary">Sign up</a>
+        <div class="text-center mt-4">
+            <span class="text-muted">Don't have an account?</span>
+            <a href="{% url 'signup' %}" class="text-primary fw-semibold">Sign up</a>
         </div>
     </div>
 </div>
